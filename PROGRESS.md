@@ -304,3 +304,67 @@ Project: Bank Statement Processing & Classification System
   - Hybrid Accuracy: 64.9% (up from 39.2%)
   - Fallback to 'Other': 24.3% (down from 60.8%)
 - All 87 pytest tests passing; `ruff check .` clean.
+
+
+## Stage 6: Pipeline + exporters (status: DONE)
+- What I built:
+  Extended `src/pipeline.py` with `process_pdf(file_bytes, password=None)` handling bytes or paths and returning `pdf_types`, `account`, `transactions` (DataFrame), `summary`, `category_summary` (DataFrame), and `warnings`.
+  Maintained `process_statement` delegating to `process_pdf` for backwards compatibility.
+  Added custom exceptions `InvalidPDF` (corrupt/non-PDF bytes) and `NoTransactionsFound` (blank/empty PDFs), while preserving `PasswordRequired`, `WrongPassword`, and `TesseractNotFound`.
+  Implemented `generate_category_summary` aggregating total debit, total credit, and row counts sorted by total debit descending.
+  Implemented `src/exporters.py` with `to_csv(df)` and `to_excel(account, df, category_summary)` generating 3 openpyxl sheets (Transactions, Account Details, Category Summary) with bold headers, 2-decimal formatting, auto column widths, and light yellow highlighting for flagged rows.
+  Added unit and integration tests in `tests/test_pipeline.py` verifying full pipeline execution across text and scanned samples, export integrity, and error raising.
+- Files created/changed:
+  - src/pipeline.py
+  - src/exporters.py
+  - tests/test_pipeline.py
+  - PROGRESS.md
+- Commands run and results:
+  - `.\venv\Scripts\python.exe -m pytest`: 97 passed in 61.32s
+  - `.\venv\Scripts\ruff.exe check .`: All checks passed!
+- Design decisions and why:
+  - `process_pdf` writes input bytes to a temporary file, enabling identical pipeline extraction through `pdfplumber` and `pymupdf` without modifying underlying page-level extraction engines.
+  - Transactions are returned as a pandas DataFrame matching the common schema, preserving compatibility with `len()` assertions in existing tests while offering instant export capabilities.
+  - Category summaries group by category with debit totals sorted descending to immediately highlight significant expenditure categories.
+  - Excel export formats flagged rows with solid light yellow fill (`#FFF9C4`) so discrepancies and reconciliation breaks stand out visually upon file open.
+- Problems faced and how I fixed them:
+  - Fast header validation (`%PDF` magic byte) was added before temporary file creation to immediately fail non-PDF payloads without executing extractor overhead.
+  - Ensured `openpyxl` imports were sorted properly to conform to ruff import rules.
+- Known limitations / not done:
+  - Web UI frontend deferred to Stage 7.
+- Next stage needs:
+  - Stage 7 needs `app.py` Streamlit UI with file uploader, password prompt, metric cards, interactive transaction table with category editing, and CSV/Excel download buttons.
+
+
+## Stage 7: Streamlit UI (clean and minimal) (status: DONE)
+- What I built:
+  Updated `.streamlit/config.toml` with the specified theme (`primaryColor="#4F46E5"`, white background, `#F5F6F8` secondary, `#1F2937` text, sans serif font, 20MB upload size limit).
+  Created a thin, minimal single-page web UI in `app.py` calling only `src.pipeline` (`process_pdf`, `generate_category_summary`) and `src.exporters` (`to_csv`, `to_excel`).
+  Integrated `st.file_uploader` for PDF statements with conditional password prompt catching `PasswordRequired` and `WrongPassword`.
+  Added friendly banner notifications without stack traces for `InvalidPDF`, `NoTransactionsFound`, `WrongPassword`, and `TesseractNotFound`.
+  Displayed page type breakdown, account details card, 4 summary metric tiles, interactive `st.data_editor` with a 19-category dropdown, category summary table, debit bar chart, and CSV/Excel download buttons bound to user-edited data.
+  Cached statement processing using `st.cache_data` and animated processing state with `st.spinner`.
+- Files created/changed:
+  - app.py
+  - .streamlit/config.toml
+  - PROGRESS.md
+- Commands run and results:
+  - `.\venv\Scripts\python.exe -m pytest`: 97 passed in 83.83s
+  - `.\venv\Scripts\ruff.exe check .`: All checks passed!
+  - Verified 6 sample PDFs processed through UI pipeline (`app.run_pipeline`):
+    - text_bordered.pdf: 28 rows, Debit: 44162.9, Credit: 93787.0, Flagged: 0
+    - text_borderless.pdf: 28 rows, Debit: 44162.9, Credit: 93787.0, Flagged: 0
+    - text_drcr.pdf: 28 rows, Debit: 44162.9, Credit: 93787.0, Flagged: 0
+    - text_multiline.pdf: 28 rows, Debit: 44162.9, Credit: 93787.0, Flagged: 0
+    - test_A_landscape_extra_cols.pdf: 30 rows, Debit: 56718.4, Credit: 239641.5, Flagged: 0
+    - test_B_portrait_boxed.pdf: 32 rows, Debit: 74763.4, Credit: 239641.5, Flagged: 0
+- Design decisions and why:
+  - Kept `app.py` purely focused on presentation and state handling; all extraction, validation, categorization, and export logic remain strictly inside `src/`.
+  - Used `st.cache_data` keyed by file content and password so user edits in `st.data_editor` re-render category summaries and download buttons instantaneously without re-parsing the PDF.
+  - Category summaries and downloads re-aggregate from `edited_df` to ensure manual category corrections are faithfully preserved in the exported reports.
+- Problems faced and how I fixed them:
+  - Ruff flagged blind exception catch in `app.py`; narrowed exception handling to specific error classes `(RuntimeError, ValueError, OSError)` for generic failures.
+- Known limitations / not done:
+  - Stage 8 end-to-end polish, README instructions, and packaging deferred to Stage 8.
+- Next stage needs:
+  - Stage 8 needs end-to-end documentation, polish, deployment guidance, and final verification.
