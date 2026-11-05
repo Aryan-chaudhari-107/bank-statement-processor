@@ -1,0 +1,18 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing and linting caches
+.pytest_cache/
+.ruff_cache/
+
+# Output files
+*.xlsx
+
+# Models and temporary exports (except training data if committed)
+models/*.pkl
