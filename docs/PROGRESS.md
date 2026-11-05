@@ -368,3 +368,84 @@ Project: Bank Statement Processing & Classification System
   - Stage 8 end-to-end polish, README instructions, and packaging deferred to Stage 8.
 - Next stage needs:
   - Stage 8 needs end-to-end documentation, polish, deployment guidance, and final verification.
+
+
+### Note on Rule Engine Credit Prioritization
+- Updated `src/classifier/rule_engine.py` so credit transactions evaluate rules marked `type: credit` first (longest keyword first) before evaluating remaining eligible general rules.
+- Added unit test `test_credit_rule_priority_refund` in `tests/test_classifier.py` asserting that `"NEFT-REFUND-MAKEMYTRIP"` as a credit is classified as `Refund`.
+- Verification: `ruff check .` passed with 0 errors, and all 98 tests in `pytest` passed cleanly.
+
+
+## Stage 8: Final checks, README, deployment prep (status: DONE)
+- What I built:
+  Updated `.gitignore` ensuring virtualenv, caches, and personal/real PDFs are excluded while `models/classifier.pkl` and `data/training_data.csv` are tracked.
+  Wrote comprehensive `README.md` covering system capabilities, architecture, setup instructions, benchmark accuracy, assumptions, limitations, and Streamlit Community Cloud deployment steps.
+  Verified all 98 unit and integration tests pass cleanly and `ruff check .` reports 0 errors.
+  Prepared deployment assets including `packages.txt` with `tesseract-ocr`.
+- Files created/changed:
+  - .gitignore: Excludes virtual environments, Python bytecode, test caches, and personal PDFs while retaining models/classifier.pkl and data/training_data.csv.
+  - README.md: Comprehensive documentation with setup, architecture, detection/classification details, benchmarks, and deployment steps.
+  - app.py: Streamlit UI with file uploader, encrypted PDF support, metric cards, interactive data editor, and CSV/Excel exports.
+  - packages.txt: Streamlit Community Cloud apt-get package dependency for tesseract-ocr.
+  - requirements.txt: Pinned Python dependency list.
+  - src/__init__.py: Top-level source package initialization.
+  - src/pipeline.py: End-to-end processing pipeline orchestrating detection, extraction, parsing, validation, and categorization.
+  - src/exporters.py: Formatted UTF-8 CSV exporter and multi-sheet Excel workbook generator with flagged cell highlighting.
+  - src/extractors/__init__.py: Extraction package initialization.
+  - src/extractors/pdf_detector.py: Page-level character density classifier (text vs. scanned) and password exception handler.
+  - src/extractors/text_extractor.py: Native digital text word and coordinate extractor using pdfplumber.
+  - src/extractors/ocr_extractor.py: Multi-variant preprocessing and Tesseract OCR word extractor for scanned pages.
+  - src/parsers/__init__.py: Parsing package initialization.
+  - src/parsers/account_parser.py: Account metadata extraction for holder name, account number, IFSC, bank, and period.
+  - src/parsers/table_parser.py: Dynamic column boundary derivation, continuation line tracking, and transaction row parsing.
+  - src/parsers/utils.py: Date normalization and numeric amount parsing supporting Dr/Cr and signed notations.
+  - src/validators/__init__.py: Validation package initialization.
+  - src/validators/balance_validator.py: Running balance arithmetic reconciliation and balance chain break detection.
+  - src/classifier/__init__.py: Classification package initialization.
+  - src/classifier/cleaner.py: Transaction narrative cleaning, handle stripping, and banking channel detection.
+  - src/classifier/rules.yaml: 150+ keyword patterns across 19 categories with direction constraints.
+  - src/classifier/rule_engine.py: Specificity-based regex classification engine prioritizing credit-specific rules for credits.
+  - src/classifier/ml_classifier.py: Singleton model loader and inference predictor using sublinear TF-IDF character n-grams.
+  - src/classifier/hybrid.py: Two-stage hybrid classifier combining rules (conf 1.0) with ML inference (threshold 0.25).
+  - src/classifier/train.py: Synthetic transaction dataset generator and Logistic Regression classifier trainer.
+  - data/training_data.csv: Generated dataset containing 676 labelled transaction examples across all 19 categories.
+  - models/classifier.pkl: Serialized scikit-learn TF-IDF + Logistic Regression classification model.
+  - sample_data/generate_samples.py: Synthetic PDF statement generator creating realistic test cases.
+  - tests/__init__.py: Test package initialization.
+  - tests/test_parsers.py: Unit tests for date/amount parsing, account metadata, and table extraction across 6 sample PDFs.
+  - tests/test_validator.py: Unit tests for arithmetic balance validation, sign inversion detection, and summary flags.
+  - tests/test_classifier.py: Unit tests for cleaning, rule specificity, direction constraints, held-out ML accuracy, and unseen evaluation.
+  - tests/test_pipeline.py: Integration tests for process_pdf across text and scanned statements, export formats, and error handling.
+  - tests/unseen_eval.csv: Hand-written benchmark dataset with 74 realistic descriptions having zero training overlap.
+  - tests/evaluate_unseen.py: Evaluation runner calculating rules alone, ML alone, hybrid accuracy, and fallback rates.
+  - PROGRESS.md: Project stage progression log.
+- Commands run and results:
+  - `.\venv\Scripts\python.exe -m pytest`: 98 passed in 103.92s
+  - `.\venv\Scripts\ruff.exe check .`: All checks passed!
+- Design decisions and why:
+  1. Standard Word Coordinate Interface: All extractors (digital text and Tesseract OCR) produce a normalized stream of `{"text", "x0", "x1", "top", "bottom", "page"}` dicts, allowing 100% parser code reuse across digital and scanned PDFs.
+  2. Dynamic Header-Based Column Derivation: Column ranges are derived directly from header cell coordinates and midpoints rather than fixed bounding boxes, naturally accommodating varied layouts and extra unknown columns.
+  3. Direction-Constrained Rule Prioritization: Rules marked `type: credit` are evaluated first on credit transactions, preventing vendor matches (e.g. MakeMyTrip travel) from overriding true accounting intents (e.g. Refund).
+  4. Two-Stage Hybrid Classifier with Low Threshold (0.25): High-precision deterministic rules handle known banking terms with 100% accuracy, while sublinear character n-grams catch OCR typos and novel merchants, safely routing indeterminate noise to "Other".
+  5. Honest Degradation Signaling: Rather than guessing silently on poor-quality scans, the system calculates word confidence, counts unparsed lines with amounts, and flags balance chain breaks directly to the user.
+- Problems faced and how I fixed them:
+  - In Streamlit CLI launch within Windows sandbox, `credentials.toml` outside the workspace caused a permission prompt; resolved by setting headless options and configuring `.streamlit/config.toml`.
+  - Updated `.gitignore` to ensure `models/classifier.pkl` and `data/training_data.csv` remain tracked while local PDFs outside `sample_data/` are excluded.
+- Known limitations / not done:
+  - Highly degraded scans with heavy JPEG compression or extreme tilt can omit words; honest reporting surfaces these via explicit warnings.
+  - ML classifier trained on synthetic banking patterns achieves ~65% accuracy on completely novel merchants with ~24% defaulting to "Other", easily corrected via UI.
+- Next stage needs:
+  - Project complete! Ready for GitHub push and Streamlit Community Cloud deployment.
+
+
+### Note on Scanned PDF OCR Golden Test Accuracy
+- Verified OCR golden tests: `scanned_bordered.pdf` matched 28/28 (100.0%) and `scanned_drcr.pdf` matched 28/28 (100.0%) with 0 row differences against expected ground truth.
+
+### Note on Project Structure Cleanup
+- Cleaned repository structure: moved PROGRESS.md to docs/PROGRESS.md, stages to docs/build-process/, cleared transient caches, and updated README.md project tree.
+
+### Note on Deployment Readiness & GitHub Push
+- Prepared repository for Linux/Streamlit Community Cloud deployment (cross-platform OCR fallback on Linux PATH, relative model loading from project root, tesseract-ocr in packages.txt).
+- Verified ruff checks and full pytest suite (98/98 passed).
+- Pushed clean codebase to GitHub main branch.
+

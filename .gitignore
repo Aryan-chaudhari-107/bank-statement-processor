@@ -11,8 +11,14 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Output files
+# Output files and local logs
 *.xlsx
+*.log
 
-# Models and temporary exports (except training data if committed)
-models/*.pkl
+# Personal/real PDFs outside sample_data
+*.pdf
+!sample_data/**
+
+# Explicitly track trained classifier model and training data
+!models/classifier.pkl
+!data/training_data.csv

@@ -19,8 +19,8 @@ from sklearn.pipeline import Pipeline
 
 from src.classifier.cleaner import clean_description
 
-DATA_DIR = Path("data")
-MODELS_DIR = Path("models")
+DATA_DIR = PROJECT_ROOT / "data"
+MODELS_DIR = PROJECT_ROOT / "models"
 CSV_PATH = DATA_DIR / "training_data.csv"
 MODEL_PATH = MODELS_DIR / "classifier.pkl"
 

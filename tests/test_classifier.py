@@ -62,6 +62,14 @@ def test_rule_specificity_longer_keyword_wins() -> None:
     assert res_swiggy[0] == "Food & Dining"
 
 
+def test_credit_rule_priority_refund() -> None:
+    """Verify that a credit transaction prioritizes type: credit rules (Refund) over longer merchant keywords."""
+    res = classify("NEFT-REFUND-MAKEMYTRIP", is_credit=True)
+    assert res is not None
+    assert res[0] == "Refund"
+    assert res[1] == 1.0
+
+
 HANDWRITTEN_TEST_CASES = [
     # Rule cases
     ("UPI/412345678901/SWIGGY/okaxis", False, "Food & Dining"),

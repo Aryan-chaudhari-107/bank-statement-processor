@@ -9,7 +9,8 @@ import numpy as np
 from src.classifier.cleaner import clean_description
 from src.classifier.train import train_model
 
-MODEL_PATH = Path("models") / "classifier.pkl"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+MODEL_PATH = PROJECT_ROOT / "models" / "classifier.pkl"
 _MODEL: Any = None
 
 

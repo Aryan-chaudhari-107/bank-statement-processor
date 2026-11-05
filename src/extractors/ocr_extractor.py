@@ -41,16 +41,17 @@ def get_tesseract_cmd() -> str:
     if which_cmd:
         return which_cmd
 
-    # Standard Windows installation paths
-    win_path = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
-    if win_path.exists():
-        return str(win_path)
+    # Standard Windows installation paths (Windows only)
+    if os.name == "nt":
+        win_path = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+        if win_path.exists():
+            return str(win_path)
 
-    local_app_data = os.environ.get("LOCALAPPDATA", "")
-    if local_app_data:
-        win_local = Path(local_app_data) / "Programs" / "Tesseract-OCR" / "tesseract.exe"
-        if win_local.exists():
-            return str(win_local)
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        if local_app_data:
+            win_local = Path(local_app_data) / "Programs" / "Tesseract-OCR" / "tesseract.exe"
+            if win_local.exists():
+                return str(win_local)
 
     raise TesseractNotFound(
         "Tesseract OCR is not installed or not found on PATH. "
